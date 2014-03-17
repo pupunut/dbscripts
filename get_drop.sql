@@ -1,18 +1,10 @@
+-- --------------------------------------------------------------------------------
+-- Routine DDL
+-- Note: comments before and after the routine body will not be stored by the server
+-- --------------------------------------------------------------------------------
 DELIMITER $$
 
-DROP PROCEDURE IF EXISTS `debug_msg`$$
-
-CREATE PROCEDURE debug_msg(enabled INTEGER, msg VARCHAR(255))
-BEGIN
-  IF enabled THEN BEGIN
-    select concat("** ", msg) AS '** DEBUG:';
-  END; END IF;
-END $$
-
-
-DROP PROCEDURE IF EXISTS `get_drop`$$
-
-CREATE PROCEDURE get_drop()
+CREATE DEFINER=`root`@`localhost` PROCEDURE `get_drop`()
 BEGIN
   DECLARE output TEXT DEFAULT ' ';
   DECLARE done INT DEFAULT FALSE;
@@ -34,28 +26,29 @@ BEGIN
 
   read_loop: LOOP
     FETCH cur INTO curr_sn, curr_date, curr_open, curr_high, curr_low, curr_close, curr_count, curr_total;
-    IF done THEN
+    
+	IF done THEN
       LEAVE read_loop;
     END IF;
 
-    IF lp > 0 THEN
-    	IF curr_sn = last_sn THEN
-            set lp = lp + 1;
-	    IF curr_open > last_low AND curr_open < last_open AND curr_open > curr_close THEN
-            	set found = found + 1;
-            END IF;
-        ELSE
-            IF found = lp_count THEN
-                insert into period_dst select * from period where sn = last_sn and date = last_date;
-            END IF;
-            SET found = 0;
-            SET lp = 0;
-        END IF;
-    ELSE
-    	SET lp = 1;
-        IF curr_open > curr_close THEN
-            SET found = 1;
-        END IF; 
+    IF curr_sn = last_sn THEN
+		set lp = lp + 1;
+
+		IF curr_open > last_low AND curr_open < last_open AND curr_open > curr_close THEN
+			set found = found + 1;
+		END IF;
+	ELSE
+        # found a target
+		IF found = lp_count THEN
+			insert into period_dst select * from period where sn = last_sn and date = last_date;
+		END IF;
+        #new loop, initialize the variables
+		IF curr_open > curr_close THEN
+			SET found = 1; #drop at the first day
+		ELSE
+			SET found = 0;
+		END IF;
+		SET lp = 1;
     END IF;
 
     set last_sn = curr_sn;
@@ -67,8 +60,4 @@ BEGIN
   END LOOP;
 
   CLOSE cur;
-END $$
-DELIMITER ; 
-
-call get_drop();
-
+END
