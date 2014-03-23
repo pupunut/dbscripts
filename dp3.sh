@@ -2,16 +2,18 @@
 
 # convert dayline files of TDX into the data that can be imported into database
 program=$(basename $0)
- if [ $# != 1 ]; then
+if [ $# != 1 ]; then
  	echo "Usage: $program day_data_dir"
 	exit 1
- fi
+fi
+
+dbdir=$1
 
 for i in $(ls $1); do
 	suffix=${i:8}
 	if [ "$suffix" == ".TXT" ]; then
 		j=${i:2}
-		iconv -f cp936 -t utf8 $1/$i|head -n-1|tail -n+3|awk -v sn=${j%%.*}  '{
+		iconv -f cp936 -t utf8 $dbdir/$i|head -n-1|tail -n+3|awk -v sn=${j%%.*}  '{
 			split($1, a, "/", seps)
 			$2=$2*100
 			$3=$3*100
